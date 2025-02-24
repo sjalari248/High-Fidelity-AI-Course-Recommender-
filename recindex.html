@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Course Recommender</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <style>
+    .placeholder {
+      color: gray;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <div class="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">
+    <h1 class="text-2xl font-bold mb-4">High School Course Recommender</h1>
+    <label class="block mb-2 font-medium">Upload Your Course Catalog (PDF):</label>
+    <input type="file" id="courseCatalog" accept="application/pdf" class="block w-full mb-4 p-2 border rounded" />
+    <div id="uploadStatus" class="text-sm text-gray-500 hidden">PDF uploaded and text extracted successfully.</div>
+
+    <label class="block mb-2 font-medium">Select Your Interests:</label>
+    <select id="interests" class="block w-full mb-4 p-2 border rounded">
+      <option value="" disabled selected class="placeholder">Select Field of Interest</option>
+      <option value="Engineering">Engineering</option>
+      <option value="Computer Science">Computer Science</option>
+      <option value="Medicine">Medicine</option>
+      <option value="Arts">Arts</option>
+      <option value="Business">Business</option>
+      <option value="Humanities">Humanities</option>
+      <option value="No Specific Interest">No Specific Interest</option>
+    </select>
+
+    <label class="block mb-2 mt-3 font-medium">Target College/University:</label>
+    <select id="college" class="block w-full mb-4 p-2 border rounded">
+      <option value="" disabled selected class="placeholder">Search College/University</option>
+    </select>
+
+    <label class="block mb-2 mt-3 font-medium">Select Your Grade:</label>
+    <div class="flex gap-2 mb-4">
+      <button class="bg-gray-200 px-4 py-2 rounded" data-grade="9">9th</button>
+      <button class="bg-gray-200 px-4 py-2 rounded" data-grade="10">10th</button>
+      <button class="bg-gray-200 px-4 py-2 rounded" data-grade="11">11th</button>
+      <button class="bg-gray-200 px-4 py-2 rounded" data-grade="12">12th</button>
+    </div>
+
+    <label class="block mb-2 font-medium">Most Recent Math Class Completed:</label>
+    <select id="mathClass" class="block w-full mb-4 p-2 border rounded">
+      <option value="" disabled selected class="placeholder">Select Class</option>
+      <option value="Grade 8 Mathematics">Grade 8 Mathematics</option>
+      <option value="Algebra 1">Algebra 1</option>
+      <option value="Geometry">Geometry</option>
+      <option value="Algebra 2">Algebra 2</option>
+      <option value="Pre-Calculus">Pre-Calculus</option>
+      <option value="Calculus">Calculus</option>
+    </select>
+    <label class="block mb-2 font-medium">Select Course Difficulty:</label>
+    <input type="range" id="difficulty" min="1" max="4" step="1" class="w-full mb-4" />
+    <div class="text-center" id="difficultyLabel">Medium</div>
+
+    <button id="submitBtn" class="bg-blue-500 text-white px-4 py-2 rounded">Get Recommendations</button>
+
+    <div id="loadingMessage" class="hidden mt-2 text-blue-500">Loading courses, please wait...</div>
+
+    <div id="results" class="mt-6 hidden">
+      <h2 class="text-xl font-bold">Recommended Courses</h2>
+      <ul id="courseList" class="mt-2 list-disc pl-6"></ul>
+    </div>
+  </div>
+
+  <script>
+    let pdfText = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const pdfInput = document.getElementById("courseCatalog");
+      if (pdfInput) {
+        pdfInput.addEventListener("change", function (event) {
+          const file = event.target.files[0];
+          if (file) {
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+              const typedarray = new Uint8Array(fileReader.result);
+              try {
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                let extractedText = "";
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                  const page = await pdf.getPage(pageNum);
+                  const content = await page.getTextContent();
+                  const pageText = content.items.map(item => item.str).join(" ");
+                  extractedText += pageText + "\n";
+                }
+                pdfText = extractedText.trim();
+                document.getElementById("uploadStatus").classList.remove("hidden");
+                document.getElementById("uploadStatus").textContent = "PDF uploaded and text extracted successfully.";
+                console.log("Extracted PDF Text:", pdfText);
+              } catch (error) {
+                console.error("Error extracting PDF text:", error);
+                alert("Failed to extract text from PDF.");
+              }
+            };
+            fileReader.readAsArrayBuffer(file);
+          }
+        });
+      }
+    });
+
+    document.querySelectorAll("[data-grade]").forEach(button => {
+      button.addEventListener("click", function () {
+        if (this.classList.contains("bg-blue-500")) {
+          this.classList.remove("bg-blue-500", "text-white");
+          this.classList.add("bg-gray-200", "text-black");
+        } else {
+          document.querySelectorAll("[data-grade]").forEach(btn => {
+            btn.classList.remove("bg-blue-500", "text-white");
+            btn.classList.add("bg-gray-200", "text-black");
+          });
+          this.classList.remove("bg-gray-200", "text-black");
+          this.classList.add("bg-blue-500", "text-white");
+        }
+      });
+    });
+
+    document.getElementById("courseCatalog").addEventListener("change", function () {
+      if (this.files.length > 0) {
+      } else {
+        document.getElementById("uploadStatus").classList.add("hidden");
+      }
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", handleRecommendationRequest);
+
+    document.getElementById("difficulty").addEventListener("input", function () {
+      const labels = ["Easy", "Medium", "Difficult", "Extreme"];
+      document.getElementById("difficultyLabel").textContent = labels[this.value - 1];
+    });
+
+    function displayRecommendations(courses) {
+      const list = document.getElementById("courseList");
+      list.innerHTML = "";
+      courses.forEach(course => {
+        const li = document.createElement("li");
+        li.textContent = course;
+        list.appendChild(li);
+      });
+      document.getElementById("results").classList.remove("hidden");
+    }
+
+    $(document).ready(function () {
+      $('#college').select2({
+        placeholder: "Search College/University",
+        allowClear: true,
+        ajax: {
+          url: 'https://api.data.gov/ed/collegescorecard/v1/schools.json',
+          dataType: 'json',
+          data: function (params) {
+            return {
+              api_key: 'Bu6Pku0B3kW9OTGe9j4ONHhL807YTmKFghvC7IHc',
+              'school.name': params.term,
+              per_page: 20
+            };
+          },
+          processResults: function (data) {
+            if (!data.results) {
+              console.error("API Response Error:", data);
+              return { results: [] };
+            }
+            return {
+              results: data.results.map(function (school) {
+                return { id: school.id, text: school.school.name };
+              })
+            };
+          },
+          cache: true
+        },
+        minimumInputLength: 3
+      });
+    });
+
+    async function sendToEdenAI(userInterest, userCollege, userGrade, userMath, userDifficulty, pdfText) {
+      const headers = {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNTk3ZjE3MTctMmZiNi00YmMyLTg2MDgtNTQ3YTdkOTRlNjkxIiwidHlwZSI6ImFwaV90b2tlbiJ9.fXnfNLlZOiLG9aFE8aP2xJ2HF4JSx-nJvcplVzke1Bo",
+        "Content-Type": "application/json"
+      };
+      const url = "https://api.edenai.run/v2/multimodal/chat";
+      const systemPrompt = "You are an AI that recommends exactly six classes. If the user is in 12th grade, recommend 2 core classes and 4 electives. Otherwise, 4 core classes and 2 electives. Provide nothing else.";
+      const userPrompt =
+        "Interest: " + userInterest +
+        "\nCollege: " + userCollege +
+        "\nGrade: " + userGrade +
+        "\nMath Completed: " + userMath +
+        "\nDifficulty: " + userDifficulty;
+
+      const body = {
+        providers: ["openai"],
+        messages: [
+          {
+            role: "system",
+            content: [
+              { type: "text", content: { text: systemPrompt } }
+            ]
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", content: { text: userPrompt } }
+            ]
+          }
+        ]
+      };
+
+      if (pdfText) {
+        body.messages.push({
+          role: "user",
+          content: [
+            { type: "text", content: { text: "Course Catalog Content: " + pdfText } }
+          ]
+        });
+      }
+
+      body.messages.push({
+        role: "user",
+        content: [
+          { type: "text", content: { text: "Please recommend 1 English class." } }
+        ]
+      });
+
+      console.log("Request Body:", JSON.stringify(body, null, 2));
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body)
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error("API Error:", responseData);
+        throw new Error(`API request failed with status ${response.status}: ${JSON.stringify(responseData)}`);
+      }
+
+      console.log("API Response Data:", responseData);
+
+      if (!responseData.openai || !responseData.openai.generated_text) {
+        console.error("No recommendations returned from API");
+        throw new Error("No recommendations available.");
+      }
+
+      const recommendationsText = responseData.openai.generated_text.trim();
+      return recommendationsText.split("\n").map(course => course.trim()).filter(course => course);
+    }
+
+    async function handleRecommendationRequest() {
+      console.log("Button clicked");
+
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true;
+      document.getElementById("loadingMessage").classList.remove("hidden");
+
+      const interests = document.getElementById("interests").value;
+      const college = document.getElementById("college").value;
+      const mathClass = document.getElementById("mathClass").value;
+      const difficulty = document.getElementById("difficulty").value;
+      const selectedGradeButton = document.querySelector("[data-grade].bg-blue-500");
+
+      if (!selectedGradeButton) {
+        alert("Please select your grade level.");
+        return;
+      }
+
+      const userGrade = selectedGradeButton.getAttribute("data-grade");
+
+      if (!pdfText) {
+        alert("Please upload a course catalog PDF and wait for text extraction.");
+        return;
+      }
+
+      try {
+        const recommendations = await sendToEdenAI(
+          interests,
+          college,
+          userGrade,
+          mathClass,
+          difficulty,
+          pdfText
+        );
+
+        document.getElementById("loadingMessage").classList.add("hidden");
+
+        if (!recommendations || recommendations.length === 0) {
+          alert("No course recommendations found.");
+          return;
+        }
+
+        displayRecommendations(recommendations);
+        submitBtn.disabled = false;
+      } catch (error) {
+        console.error("Error getting recommendations:", error);
+        alert("An error occurred while processing your request.");
+        document.getElementById("loadingMessage").classList.add("hidden");
+      }
+    }
+  </script>
+</body>
+</html>
